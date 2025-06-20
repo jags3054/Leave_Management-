@@ -6,8 +6,17 @@ const router = express.Router();
 
 // Apply Leave
 router.post('/apply', authMiddleware(['staff']), async (req,res)=>{
-  const days = ((new Date(req.body.endDate) - new Date(req.body.startDate))/(1000*60*60*24))+1;
-  const leave= new Leave({ user: req.user.id, ...req.body, days });
+  const days = ((new Date(req.body.endDate) - new Date(req.body.startDate)) / (1000*60*60*24)) + 1;
+  const leave = new Leave({
+    user: req.user.id,
+    ...req.body,
+    days,
+    currentStage: 'HOD', // 👈 ADD THIS LINE
+    status: 'pending',   // Optional, helps with filtering
+    hodStatus: 'pending',
+    principalStatus: 'pending',
+  });
+
   await leave.save();
   res.status(201).json(leave);
 });

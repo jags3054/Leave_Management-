@@ -9,7 +9,11 @@ const app = express();
 
 console.log('JWT_SECRET:', process.env.JWT_SECRET);
 
-app.use(cors(), express.json());
+app.use(cors({
+  origin: 'http://localhost:3000', // or '*' for all, but not secure for auth
+  credentials: true,
+}));
+app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/admin',adminRoutes);

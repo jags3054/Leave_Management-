@@ -12,7 +12,7 @@ const userRoute=require('./routes/userRoute');
 const app = express();
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://leave-management-zeta.vercel.app'],
+  origin: ['http://localhost:3000', 'https://leave-management-zeta.vercel.app','https://leavetracker.cloud'],
   credentials: true,
 }));
 app.use(express.json());

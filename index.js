@@ -19,7 +19,7 @@ const server = http.createServer(app);
 // Middleware
 // app.use(cors({ origin: ['http://localhost:3000', ], credentials: true }));
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://leave-management-zeta.vercel.app','https://leavetracker.cloud'],
+  origin: ['http://localhost:3000', 'https://leavetracker.cloud'],
   credentials: true,
 }));
 app.use(express.json());

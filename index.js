@@ -18,8 +18,9 @@ const server = http.createServer(app);
 
 // Middleware
 // app.use(cors({ origin: ['http://localhost:3000', ], credentials: true }));
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://leavetracker.cloud'],
+  origin: ['https://leavetracker.cloud', 'http://localhost:3000'], // include your frontend domains
   credentials: true,
 }));
 app.use(express.json());

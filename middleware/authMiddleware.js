@@ -1,7 +1,9 @@
+// middleware/authMiddleware.js
+
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-module.exports = function (allowedRoles = []) {
+const authMiddleware = (allowedRoles = []) => {
   return async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
@@ -13,7 +15,7 @@ module.exports = function (allowedRoles = []) {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id);
+      const user = await User.findById(decoded.id).select('-password');
 
       if (!user) {
         return res.status(401).json({ message: 'Invalid token' });
@@ -32,3 +34,5 @@ module.exports = function (allowedRoles = []) {
     }
   };
 };
+
+module.exports = authMiddleware;

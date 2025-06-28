@@ -3,7 +3,15 @@ const User = require('../models/User');
 const router = express.Router();
 const LeaveBalance = require('../models/LeaveBalance');
 const sendMail = require('../utils/sendMail');
+const nodemailer = require('nodemailer');
 
+const transporter = nodemailer.createTransport({
+  service: 'Gmail', // or another email provider
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 router.post('/register', async (req, res) => {
   try {
@@ -47,6 +55,15 @@ router.post('/register', async (req, res) => {
     });
 
     await user.save();
+
+  await LeaveBalance.create({
+      user: user._id,
+      CL: 0,
+      SL: 0,
+      HalfDay: 0,
+      DL: 0,
+      CO: 0,
+    });
 
 const admins = await User.find({ role: 'admin' });
     admins.forEach(admin => {
@@ -96,5 +113,52 @@ router.post('/login', async (req, res) => {
     }
   });
 });
+
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: 'Email not found' });
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+
+    const resetUrl = `https://leave-management-zeta.vercel.app/reset-password?token=${token}`;
+
+    await transporter.sendMail({
+      from: '"Leave System" <noreply@example.com>',
+      to: email,
+      subject: 'Password Reset Link',
+      html: `<p>Click to reset password:</p><a href="${resetUrl}">${resetUrl}</a>`
+    });
+
+    res.json({ message: 'Reset link sent' });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /auth/reset-password
+router.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.password = password; // assume hashed in pre-save hook
+    await user.save();
+
+    res.json({ message: 'Password has been reset' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(400).json({ message: 'Invalid or expired token' });
+  }
+});
+
+
+
 
 module.exports = router

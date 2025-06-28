@@ -13,8 +13,8 @@ router.get('/balance', authMiddleware(), async (req, res) => {
   if (!balance) {
     // You may return default values if not found
     balance = {
-      casualLeave: req.user.designation === 'Lab assistant' ? 10 : 12,
-      sickLeave: req.user.designation === 'Lab assistant' ? 5 : 8
+      casualLeave: req.user.designation === 'Lab assistant' ? 0 : 0,
+      sickLeave: req.user.designation === 'Lab assistant' ? 0 : 0
     };
   }
 

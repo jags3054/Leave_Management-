@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   designation: String,
   doj: Date,
   is_approved: { type: Boolean, default: false },
+  department: { type: String, required: true },
 }, { timestamps: true });
 
 

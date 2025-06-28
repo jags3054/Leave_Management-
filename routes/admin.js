@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Leave = require('../models/Leave');
 const authMiddleware = require('../middleware/authMiddleware');
 const LeaveBalance= require('../models/LeaveBalance')
-
+const { sendNotification } = require('../socket');
 // Middleware: admin-only
 const requireAdmin = authMiddleware(['admin']);
 
@@ -15,6 +15,8 @@ router.post('/user/:id/approve', async (req, res) => {
     const user = await User.findByIdAndUpdate(req.params.id, { is_approved: true }, { new: true });
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ message: 'User approved successfully', user });
+
+ 
   } catch (err) {
     res.status(500).json({ message: 'Failed to approve user' });
   }
@@ -44,7 +46,14 @@ router.patch('/approve-user/:userId', authMiddleware(['admin']), async (req, res
 
     user.is_approved = true;
     await user.save();
+ sendNotification(leave.user._id.toString(), {
+      title: 'Your Account is Approved by Admin!!',
+      message: `Your Account is Approved by Admin on ${user.toDateString()}.`,
+      createdAt: new Date(),
+    });
 
+
+    return res.json({ message: 'User approved and notified' });
     await sendMail({
       to: user.email,
       subject: 'Your account has been approved',
@@ -60,8 +69,8 @@ router.patch('/approve-user/:userId', authMiddleware(['admin']), async (req, res
 });
 
 // GET /api/admin/leaves
-router.get('/leaves', requireAdmin, async (req, res) => {
-  const leaves = await Leave.find().populate('user', 'name email role');
+router.get('/leaves', authMiddleware(['admin']), async (req, res) => {
+  const leaves = await Leave.find().populate('user', 'name email department role');
   res.json(leaves);
 });
 
@@ -75,24 +84,20 @@ router.post('/init-leave/:userId', authMiddleware(['admin']), async (req, res) =
       return res.status(400).json({ message: 'Leave balance already initialized for this user' });
     }
 
-    // Determine initial leaves based on designation
-    let casualLeave = 12;
-    let sickLeave = 8;
-    if (user.designation === 'Lab assistant') {
-      casualLeave = 10;
-      sickLeave = 5;
-    }
-
     const leaveBalance = new LeaveBalance({
       user: user._id,
-      casualLeave,
-      sickLeave,
+      casualLeave: 0,
+      sickLeave: 0,
       halfDay: 0,
+      co: 0,
+      dl: 0,
     });
 
     await leaveBalance.save();
+   
 
-    res.json({ message: 'Leave balance initialized successfully' });
+    res.json({ message: 'Leave balance initialized to zero successfully' });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -131,4 +136,61 @@ router.post('/user/:id/leaves', async (req, res) => {
   });
   res.send({ message: 'Leaves updated' });
 });
+
+
+router.post('/user/:userId/leaves', authMiddleware(['admin']), async (req, res) => {
+  const { casualLeave, sickLeave, halfDay, co, dl } = req.body;
+  const userId = req.params.userId;
+
+  try {
+    const updated = await LeaveBalance.findOneAndUpdate(
+      { user: userId },
+      { $set: { casualLeave, sickLeave, halfDay, co, dl } },
+      { new: true, upsert: true }
+    );
+
+    // ✅ Send notification to the user
+    sendNotification(userId, {
+      title: 'Leave Balance Updated',
+      message: `Your leave balance has been updated by Admin.`,
+      createdAt: new Date(),
+    });
+
+    res.json({ message: 'Leave balance updated successfully', data: updated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
+// GET /api/admin/users-with-leaves
+router.get('/users-with-leaves', authMiddleware(['admin']), async (req, res) => {
+  try {
+    const users = await User.find().select('-password').lean();
+    const balances = await LeaveBalance.find().lean();
+
+    const usersWithLeaves = users.map(user => {
+      const leave = balances.find(lb => lb.user.toString() === user._id.toString());
+      return {
+        ...user,
+        leave: leave || {
+          casualLeave: 0,
+          sickLeave: 0,
+          halfDay: 0,
+          co: 0,
+          dl: 0
+        }
+      };
+    });
+
+    res.json(usersWithLeaves);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
+
 module.exports = router;

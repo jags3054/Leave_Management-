@@ -4,6 +4,7 @@ const LeaveBalance = require("../models/LeaveBalance");
 const authMiddleware = require("../middleware/authMiddleware");
 const router = express.Router();
 const { sendNotification } = require('../socket');
+const sendMail = require('../utils/sendMail');
 
 // Apply Leave
 router.post("/apply", authMiddleware(["staff", "hod"]), async (req, res) => {
@@ -105,7 +106,6 @@ router.patch("/principal/:id", authMiddleware(["principal"]), async (req, res) =
       });
     }
 
-    // Deduct or credit leave balances
     switch (leave.leaveType) {
       case "casual":
         bal.casualLeave -= leave.days;
@@ -137,30 +137,48 @@ router.patch("/principal/:id", authMiddleware(["principal"]), async (req, res) =
 
     await bal.save();
 
-    // ✅ Send approval notification
+    // ✅ In-app notification
     sendNotification(leave.user._id.toString(), {
       title: 'Leave Approved',
       message: `Your leave from ${leave.startDate.toDateString()} to ${leave.endDate.toDateString()} has been approved.`,
       createdAt: new Date(),
     });
 
+    // ✅ Email notification
+   await sendMail(
+  leave.user.email,
+  'Your Leave Has Been Approved',
+  `Hi ${leave.user.name}, your leave from ${leave.startDate.toDateString()} to ${leave.endDate.toDateString()} has been approved.`,
+  `<p>Hi <strong>${leave.user.name}</strong>,</p>
+   <p>Your leave from <strong>${leave.startDate.toDateString()}</strong> to <strong>${leave.endDate.toDateString()}</strong> has been <span style="color:green"><strong>approved</strong></span>.</p>
+   <p>Regards,<br/>Leave Tracker</p>`
+);
   } else if (action === "reject") {
     leave.principalStatus = "rejected";
     leave.status = "rejected";
     leave.currentStage = "final";
     leave.rejectReason = reason;
 
-    // ✅ Send rejection notification
+    // ✅ In-app notification
     sendNotification(leave.user._id.toString(), {
       title: 'Leave Rejected',
       message: `Your leave from ${leave.startDate.toDateString()} to ${leave.endDate.toDateString()} was rejected. Reason: ${reason}`,
       createdAt: new Date(),
     });
+
+    // ✅ Email notification
+    await sendMail(
+      leave.user.email,
+      'Your Leave Has Been Rejected',
+      `Hi ${leave.user.name},\n\nYour leave from ${leave.startDate.toDateString()} to ${leave.endDate.toDateString()} was rejected.\nReason: ${reason}\n\nRegards,\nAdmin`
+    );
   }
 
   await leave.save();
   res.json(leave);
 });
+
+
 router.put(
   "/leave-balance/:userId",
   authMiddleware(["admin"]),

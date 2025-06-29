@@ -123,7 +123,8 @@ router.post('/forgot-password', async (req, res) => {
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
 
-    const resetUrl = `https://leave-management-zeta.vercel.app/reset-password?token=${token}`;
+    // const resetUrl = `https://leave-management-zeta.vercel.app/reset-password?token=${token}`;
+     const resetUrl = `https://leave-management-le4p.onrender.com/reset-password?token=${token}`;
 
     await transporter.sendMail({
       from: '"Leave System" <noreply@example.com>',

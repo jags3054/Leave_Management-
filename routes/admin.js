@@ -8,6 +8,8 @@ const LeaveBalance= require('../models/LeaveBalance')
 const { sendNotification } = require('../socket');
 // Middleware: admin-only
 const requireAdmin = authMiddleware(['admin']);
+const sendMail = require('../utils/sendMail'); // adjust the path if needed
+
 
 
 router.post('/user/:id/approve', async (req, res) => {
@@ -46,24 +48,26 @@ router.patch('/approve-user/:userId', authMiddleware(['admin']), async (req, res
 
     user.is_approved = true;
     await user.save();
- sendNotification(leave.user._id.toString(), {
-      title: 'Your Account is Approved by Admin!!',
-      message: `Your Account is Approved by Admin on ${user.toDateString()}.`,
+
+    // ✅ Send socket notification
+    sendNotification(user._id.toString(), {
+      title: 'Your Account is Approved!',
+      message: `Your account was approved by admin on ${new Date().toDateString()}.`,
       createdAt: new Date(),
     });
 
-
-    return res.json({ message: 'User approved and notified' });
+    // ✅ Send approval email
     await sendMail({
       to: user.email,
       subject: 'Your account has been approved',
       text: `Hi ${user.name}, your account has been verified and approved. You can now log in.`,
-      html: `<p>Hi <strong>${user.name}</strong>, your account has been verified and approved. You can now log in.</p>`,
+      html: `<p>Hi <strong>${user.name}</strong>,<br>Your account has been verified and approved. You can now log in.</p>`,
     });
 
-    res.json({ message: 'User approved and notified.' });
+    return res.json({ message: 'User approved and notified.' });
+
   } catch (err) {
-    console.error(err);
+    console.error('❌ Error approving user:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 });

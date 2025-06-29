@@ -11,7 +11,7 @@ const optionsRoutes = require('./routes/options');
 const userRoute = require('./routes/userRoute');
 const NotificationRoute=require('./routes/notifications');
 
-const { setupSocket } = require('../Server/socket'); // ⬅️ socket setup
+const { setupSocket } = require('./socket'); // ⬅️ socket setup
 
 const app = express();
 const server = http.createServer(app);
